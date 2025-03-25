@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Loading Spinner -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Input Section -->
+    <EditText
+        android:id="@+id/cityInput"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:hint="@string/city_hint"
+        android:inputType="textCapWords|textAutoComplete"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/WeatherButton"
+        android:layout_marginEnd="8dp"/>
+
+    <Button
+        android:id="@+id/WeatherButton"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:text="@string/get_weather"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Current Weather Container -->
+    <LinearLayout
+        android:id="@+id/currentWeatherContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/WeatherButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp">
+
+        <FrameLayout
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:id="@+id/currentWeatherIconBackground"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:contentDescription="@string/icon_background_desc"
+                android:src="@drawable/circle_background"
+                android:visibility="invisible"/>
+
+            <ImageView
+                android:id="@+id/weatherIcon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:contentDescription="@string/weather_icon_desc"
+                android:visibility="invisible"/>
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/locationView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            tools:text="Boston"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/currentTempView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:layout_marginEnd="8dp"
+                tools:text="12°C"/>
+
+            <TextView
+                android:id="@+id/currentDescView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                tools:text="broken clouds"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Forecast Container -->
+    <LinearLayout
+        android:id="@+id/forecastContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:weightSum="5"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/currentWeatherContainer"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_bias="0.3"
+        android:layout_marginTop="24dp">
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Weather App</string>
+    <string name="city_hint">Enter city name</string>
+    <string name="get_weather">GET WEATHER</string>
+    <string name="icon_background_desc">Weather icon background</string>
+    <string name="weather_icon_desc">Weather condition icon</string>
+</resources>
