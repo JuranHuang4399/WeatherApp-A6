@@ -4,4 +4,8 @@
     <string name="get_weather">GET WEATHER</string>
     <string name="icon_background_desc">Weather icon background</string>
     <string name="weather_icon_desc">Weather condition icon</string>
+    <string name="group_4">Group 4</string>
+    <string name="check_weather">Check Weather</string>
+    <string name="temp_unit_c">°C</string>
+    <string name="temp_unit_f">°F</string>
 </resources>

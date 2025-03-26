@@ -2,7 +2,6 @@ package com.group4.weatherapp;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +12,8 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -35,13 +36,14 @@ public class WeatherActivity extends AppCompatActivity {
     private static final String STATE_WEATHER_DATA = "weather_data";
 
     private EditText cityInput;
-    private Button getWeatherButton;
+    private ToggleButton tempUnitToggle;
     private TextView locationView, currentTempView, currentDescView;
     private ImageView weatherIcon, currentWeatherIconBackground;
     private LinearLayout forecastContainer, currentWeatherContainer;
     private ProgressBar progressBar;
     private WeatherData currentWeatherData;
     private int loadingTasks = 0;
+
     private final String API_KEY = "c1c24a5d23e1c898557bb46d2d9ee2d2";
 
     @Override
@@ -50,7 +52,8 @@ public class WeatherActivity extends AppCompatActivity {
         setContentView(R.layout.activity_weather);
 
         cityInput = findViewById(R.id.cityInput);
-        getWeatherButton = findViewById(R.id.WeatherButton);
+        Button getWeatherButton = findViewById(R.id.WeatherButton);
+        tempUnitToggle = findViewById(R.id.tempUnitToggle);
         locationView = findViewById(R.id.locationView);
         currentTempView = findViewById(R.id.currentTempView);
         currentDescView = findViewById(R.id.currentDescView);
@@ -97,13 +100,46 @@ public class WeatherActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         currentWeatherContainer.setVisibility(View.GONE);
         forecastContainer.setVisibility(View.GONE);
-        new WeatherTask().execute(city);
+
+        incrementLoadingTasks();
+        new Thread(() -> {
+            try {
+                String unit = tempUnitToggle.isChecked() ? "imperial" : "metric";
+                String weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" + city +
+                        "&appid=" + API_KEY + "&units=" + unit;
+                JSONObject weatherJson = getJsonFromUrl(weatherUrl);
+
+                String forecastUrl = "https://api.openweathermap.org/data/2.5/forecast?q=" + city +
+                        "&appid=" + API_KEY + "&units=" + unit;
+                JSONObject forecastJson = getJsonFromUrl(forecastUrl);
+
+                WeatherData newData = new WeatherData(weatherJson, forecastJson);
+
+                runOnUiThread(() -> {
+                    decrementLoadingTasks();
+                    try {
+                        updateUI(newData);
+                    } catch (JSONException e) {
+                        Toast.makeText(WeatherActivity.this,
+                                "Error processing weather data", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    decrementLoadingTasks();
+                    Toast.makeText(WeatherActivity.this,
+                            "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }).start();
     }
 
     private void updateUI(WeatherData weatherData) throws JSONException {
         this.currentWeatherData = weatherData;
         currentWeatherContainer.setVisibility(View.GONE);
         forecastContainer.setVisibility(View.GONE);
+
+        String unitSymbol = tempUnitToggle.isChecked() ? "°F" : "°C";
 
         JSONObject weatherJson = weatherData.getWeatherJson();
         String cityName = weatherJson.getString("name");
@@ -114,14 +150,14 @@ public class WeatherActivity extends AppCompatActivity {
         String iconCode = weather.getString("icon");
 
         locationView.setText(cityName);
-        currentTempView.setText(String.format(Locale.getDefault(), "%.1f°C", currentTemp));
+        currentTempView.setText(String.format(Locale.getDefault(), "%.1f%s", currentTemp, unitSymbol));
         currentDescView.setText(description);
 
         currentWeatherIconBackground.setVisibility(View.VISIBLE);
         weatherIcon.setVisibility(View.VISIBLE);
 
         String iconUrl = "https://openweathermap.org/img/wn/" + iconCode + "@2x.png";
-        new LoadWeatherIconTask(weatherIcon, this).execute(iconUrl);
+        loadIconInThread(iconUrl, weatherIcon);
 
         forecastContainer.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(this);
@@ -140,75 +176,60 @@ public class WeatherActivity extends AppCompatActivity {
             String date = new SimpleDateFormat("EEE", Locale.getDefault())
                     .format(new Date(forecastItem.getLong("dt") * 1000));
             double forecastTemp = forecastItem.getJSONObject("main").getDouble("temp");
-            String desc = forecastItem.getJSONArray("weather")
-                    .getJSONObject(0).getString("description");
-            String forecastIconCode = forecastItem.getJSONArray("weather")
-                    .getJSONObject(0).getString("icon");
+            String desc = forecastItem.getJSONArray("weather").getJSONObject(0).getString("description");
+            String forecastIconCode = forecastItem.getJSONArray("weather").getJSONObject(0).getString("icon");
 
             dateView.setText(date);
-            tempView.setText(String.format(Locale.getDefault(), "%.0f°C", forecastTemp));
+            tempView.setText(String.format(Locale.getDefault(), "%.0f%s", forecastTemp, unitSymbol));
             descView.setText(desc);
 
             iconBg.setVisibility(View.VISIBLE);
             iconView.setVisibility(View.VISIBLE);
 
             String forecastIconUrl = "https://openweathermap.org/img/wn/" + forecastIconCode + "@2x.png";
-            new LoadWeatherIconTask(iconView, this).execute(forecastIconUrl);
+            loadIconInThread(forecastIconUrl, iconView);
 
             forecastContainer.addView(forecastView);
         }
     }
 
-    private class WeatherTask extends AsyncTask<String, Void, WeatherData> {
-        private Exception exception;
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            incrementLoadingTasks();
-        }
-
-        @Override
-        protected WeatherData doInBackground(String... params) {
-            String city = params[0];
+    private void loadIconInThread(String iconUrl, ImageView imageView) {
+        incrementLoadingTasks();
+        new Thread(() -> {
+            Bitmap bitmap = null;
+            HttpURLConnection connection = null;
+            InputStream input = null;
             try {
-                String weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" + city +
-                        "&appid=" + API_KEY + "&units=metric";
-                JSONObject weatherJson = getJsonFromUrl(weatherUrl);
-
-                String forecastUrl = "https://api.openweathermap.org/data/2.5/forecast?q=" + city +
-                        "&appid=" + API_KEY + "&units=metric";
-                JSONObject forecastJson = getJsonFromUrl(forecastUrl);
-
-                return new WeatherData(weatherJson, forecastJson);
+                URL url = new URL(iconUrl);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setDoInput(true);
+                connection.connect();
+                input = connection.getInputStream();
+                bitmap = BitmapFactory.decodeStream(input);
             } catch (Exception e) {
-                this.exception = e;
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(WeatherData weatherData) {
-            decrementLoadingTasks();
-
-            if (exception != null) {
-                Toast.makeText(WeatherActivity.this,
-                        "Error: " + exception.getMessage(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (weatherData != null) {
-                try {
-                    updateUI(weatherData);
-                } catch (JSONException e) {
-                    Toast.makeText(WeatherActivity.this,
-                            "Error processing weather data", Toast.LENGTH_SHORT).show();
+                Log.e("WeatherActivity", "Error loading weather icon", e);
+            } finally {
+                if (input != null) {
+                    try {
+                        input.close();
+                    } catch (Exception e) {
+                        Log.e("WeatherActivity", "Error loading weather icon", e);
+                    }
                 }
-            } else {
-                Toast.makeText(WeatherActivity.this,
-                        "Failed to get weather data", Toast.LENGTH_SHORT).show();
+                if (connection != null) {
+                    connection.disconnect();
+                }
             }
-        }
+
+            final Bitmap finalBitmap = bitmap;
+            runOnUiThread(() -> {
+                decrementLoadingTasks();
+                if (finalBitmap != null) {
+                    imageView.setImageBitmap(finalBitmap);
+                    imageView.setVisibility(View.VISIBLE);
+                }
+            });
+        }).start();
     }
 
     private synchronized void incrementLoadingTasks() {
@@ -251,54 +272,6 @@ public class WeatherActivity extends AppCompatActivity {
             }
             if (connection != null) {
                 connection.disconnect();
-            }
-        }
-    }
-
-    private static class LoadWeatherIconTask extends AsyncTask<String, Void, Bitmap> {
-        private final ImageView imageView;
-        private final WeatherActivity activity;
-
-        public LoadWeatherIconTask(ImageView imageView, WeatherActivity activity) {
-            this.imageView = imageView;
-            this.activity = activity;
-            activity.incrementLoadingTasks();
-        }
-
-        @Override
-        protected Bitmap doInBackground(String... urls) {
-            HttpURLConnection connection = null;
-            InputStream input = null;
-            try {
-                URL url = new URL(urls[0]);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setDoInput(true);
-                connection.connect();
-                input = connection.getInputStream();
-                return BitmapFactory.decodeStream(input);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            } finally {
-                try {
-                    if (input != null) {
-                        input.close();
-                    }
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Bitmap bitmap) {
-            activity.decrementLoadingTasks();
-            if (bitmap != null) {
-                imageView.setImageBitmap(bitmap);
-                imageView.setVisibility(View.VISIBLE);
             }
         }
     }
