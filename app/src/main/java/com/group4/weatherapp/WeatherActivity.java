@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -36,6 +37,8 @@ public class WeatherActivity extends AppCompatActivity {
 
     private EditText cityInput;
     private Button getWeatherButton;
+//    Toggle btn
+    private ToggleButton tempUnitToggle;
     private TextView locationView, currentTempView, currentDescView;
     private ImageView weatherIcon, currentWeatherIconBackground;
     private LinearLayout forecastContainer, currentWeatherContainer;
@@ -51,6 +54,7 @@ public class WeatherActivity extends AppCompatActivity {
 
         cityInput = findViewById(R.id.cityInput);
         getWeatherButton = findViewById(R.id.WeatherButton);
+        tempUnitToggle = findViewById(R.id.tempUnitToggle);
         locationView = findViewById(R.id.locationView);
         currentTempView = findViewById(R.id.currentTempView);
         currentDescView = findViewById(R.id.currentDescView);
@@ -114,7 +118,8 @@ public class WeatherActivity extends AppCompatActivity {
         String iconCode = weather.getString("icon");
 
         locationView.setText(cityName);
-        currentTempView.setText(String.format(Locale.getDefault(), "%.1f°C", currentTemp));
+        String unitSymbol = tempUnitToggle.isChecked() ? "°F" : "°C";
+        currentTempView.setText(String.format(Locale.getDefault(), "%.1f%s", currentTemp, unitSymbol));
         currentDescView.setText(description);
 
         currentWeatherIconBackground.setVisibility(View.VISIBLE);
@@ -146,7 +151,7 @@ public class WeatherActivity extends AppCompatActivity {
                     .getJSONObject(0).getString("icon");
 
             dateView.setText(date);
-            tempView.setText(String.format(Locale.getDefault(), "%.0f°C", forecastTemp));
+            tempView.setText(String.format(Locale.getDefault(), "%.0f%s", forecastTemp, unitSymbol));
             descView.setText(desc);
 
             iconBg.setVisibility(View.VISIBLE);
@@ -172,6 +177,7 @@ public class WeatherActivity extends AppCompatActivity {
         protected WeatherData doInBackground(String... params) {
             String city = params[0];
             try {
+                String unit = tempUnitToggle.isChecked() ? "imperial" : "metric";
                 String weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" + city +
                         "&appid=" + API_KEY + "&units=metric";
                 JSONObject weatherJson = getJsonFromUrl(weatherUrl);
